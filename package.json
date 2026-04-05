@@ -19,7 +19,7 @@
     "hono": "^4.8.3"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.8.30",
+    "@cloudflare/vitest-pool-workers": "^0.14.1",
     "@types/node": "^25.5.2",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3",
