@@ -2,13 +2,13 @@
 
 This repository is a Cloudflare Workers TypeScript project for the HiBOTchi Discord bot.
 
-This file is for coding agents working inside this repo.
+This file documents conventions and commands for coding agents working inside this repo.
 
 ## Repo Summary
 
 - Runtime: Cloudflare Workers
 - HTTP framework: Hono
-- Language: TypeScript in ESM mode
+- Language: TypeScript (ESM)
 - Database: Cloudflare D1
 - Tests: Vitest with `@cloudflare/vitest-pool-workers`
 - Primary entrypoint: `src/index.ts`
@@ -16,45 +16,44 @@ This file is for coding agents working inside this repo.
 
 ## Instruction Files
 
-- No `.cursorrules`, `.cursor/rules/`, or `.github/copilot-instructions.md` files currently exist in this repo.
+- No `.cursorrules`, `.cursor/rules/`, or `.github/copilot-instructions.md` files were found in this repository. If you add them, include brief intent and autoprompt rules.
 
-## Core Commands
+## Core Commands (package.json)
 
 - Install dependencies: `npm install`
-- Start local Worker dev server: `npm run dev`
+- Local dev server (with scheduled test hooks): `npm run dev` (runs `wrangler dev --test-scheduled`)
 - Deploy Worker: `npm run deploy`
 - Generate Wrangler runtime/binding types: `npm run cf-typegen`
-- Typecheck: `npm run check`
-- Lint: `npm run lint`
-- Run all tests once: `npm test`
+- Typecheck / lint (project uses tsc for type-level linting): `npm run check` or `npm run lint`
+- Run all tests once: `npm test` (runs `vitest run`)
 - Run tests in watch mode: `npm run test:watch`
-- Apply D1 migrations locally: `npm run db:migrate:local`
-- Apply D1 migrations remotely: `npm run db:migrate:remote`
-- Register Discord commands using `.dev.vars`: `npm run register:commands`
+- Apply D1 migrations (local): `npm run db:migrate:local`
+- Apply D1 migrations (remote): `npm run db:migrate:remote`
+- Register Discord commands (uses `.dev.vars`): `npm run register:commands`
 
-## Single-Test Commands
+Single-test examples (Vitest):
 
 - Run one test file: `npx vitest run tests/scheduler.test.ts`
-- Run one test by name: `npx vitest run -t "can be forced outside the noon window"`
-- Run one file through npm: `npm test -- tests/scheduler.test.ts`
-- Run one file in watch mode: `npx vitest tests/scheduler.test.ts`
+- Run tests by name: `npx vitest run -t "can be forced outside the noon window"`
+- Run via npm for a single file: `npm test -- tests/scheduler.test.ts`
+- Run a single file in watch mode: `npx vitest tests/scheduler.test.ts`
 
-## Useful Dev/Debug Commands
+## Useful Dev / Debug Commands
 
-- Trigger the scheduled handler locally: `curl http://localhost:8787/__scheduled`
-- Force reminder delivery locally: `curl -X POST http://localhost:8787/admin/run-reminders -H "Authorization: Bearer $ADMIN_API_TOKEN" -H "Content-Type: application/json" -d '{"force":true}'`
-- Tail deployed Worker logs: `wrangler tail`
+- Trigger scheduled handler locally: `curl http://localhost:8787/__scheduled`
+- Force reminder delivery (local dev server):
+  `curl -X POST http://localhost:8787/admin/run-reminders -H "Authorization: Bearer $ADMIN_API_TOKEN" -H "Content-Type: application/json" -d '{"force":true}'`
+- Tail Worker logs: `wrangler tail`
 
 ## Environment and Secrets
 
-- Local Worker secrets are loaded from `.dev.vars`.
-- The `register:commands` script also loads `.dev.vars` via Node `--env-file`.
-- Do not hardcode secrets in source files.
-- Prefer `wrangler secret put` for deployed secrets.
-- Keep OAuth install URLs and non-secret config in `wrangler.jsonc`.
-- After editing `wrangler.jsonc`, run `npm run cf-typegen`.
+- Local secrets are loaded from `.dev.vars` (used by scripts that call Node with `--env-file`).
+- Do not hardcode credentials in source files.
+- Use `wrangler secret put` for deployed secrets.
+- Keep non-secret config and OAuth URLs in `wrangler.jsonc`.
+- After editing `wrangler.jsonc`, regenerate types: `npm run cf-typegen`.
 
-Expected local `.dev.vars` keys usually include:
+Common .dev.vars keys expected in dev:
 
 - `ADMIN_API_TOKEN`
 - `DISCORD_APPLICATION_ID`
@@ -62,103 +61,97 @@ Expected local `.dev.vars` keys usually include:
 - `DISCORD_PUBLIC_KEY`
 - `COMMAND_GUILD_ID`
 
-## Important Project Conventions
+## Project Conventions
 
-- This repo uses strict TypeScript. Keep code type-safe.
-- Prefer small, explicit helper functions over clever abstractions.
-- Use existing modules before introducing new ones.
-- Keep the Worker entry wiring in `src/index.ts` and move focused logic into helper modules.
-- Preserve the current architecture split: `src/index.ts` for routes/exports, `src/commands.ts` for command handling, `src/discord.ts` for Discord helpers, `src/reminders.ts` for D1 access, `src/scheduler.ts` for scheduled delivery, `src/time.ts` for time helpers, and `src/types.ts` for shared interfaces.
+- Strict TypeScript: prefer narrow types and avoid `any`.
+- Small, explicit helper functions over clever abstractions.
+- Reuse existing modules before introducing new ones.
+- Keep routing and Worker wiring in `src/index.ts` and move focused logic into small helpers/modules.
+- Current domain split to preserve: `src/index.ts`, `src/commands.ts`, `src/discord.ts`, `src/reminders.ts`, `src/scheduler.ts`, `src/time.ts`, `src/types.ts`.
 
-## Formatting Style
+## Formatting & Style
 
-- Use 2-space indentation.
-- Use double quotes, not single quotes.
-- Use semicolons.
-- Keep trailing commas off unless the surrounding file already uses them.
-- Keep import groups compact; the current codebase does not use extra blank-line-separated import blocks.
+- Indentation: 2 spaces.
+- Quotes: double quotes for JS/TS strings.
+- Semicolons: use them.
+- Trailing commas: avoid unless surrounding file already uses them.
+- Keep import groups compact (no extra blank-line-separated blocks).
 
-## Import Style
+## Import Rules
 
-- Put value imports before type-only imports when both are needed.
-- Use `import type` for pure type imports.
 - Prefer relative imports within `src/`.
+- Put value imports before type-only imports when both are needed.
+- Use `import type { ... } from "..."` for pure type imports.
 
 ## Naming Conventions
 
-- Functions and variables: `camelCase`
-- Interfaces and types: `PascalCase`
-- Constants: `UPPER_SNAKE_CASE` for true constants like `CHICAGO_TIME_ZONE`
-- Slash command names: kebab-case strings like `ticket-list`
-- D1 column names: `snake_case`
-- File names: short lowercase names, one concern per file
+- Variables and functions: `camelCase`.
+- Types and interfaces: `PascalCase`.
+- Constants: `UPPER_SNAKE_CASE` for true constants (e.g., `CHICAGO_TIME_ZONE`).
+- Slash command names: kebab-case strings (e.g., `ticket-list`).
+- D1 column names: `snake_case`.
+- File names: short, lowercase, one concern per file.
 
 ## TypeScript Guidelines
 
-- Do not use `any`.
-- Prefer explicit interfaces for shared data shapes.
-- Keep function return types explicit when the function is part of a public module API.
-- Use narrow unions and `undefined` checks instead of broad casting.
-- Use `as` only when the runtime shape is already known and unavoidable.
-
-## Worker and Cloudflare Guidelines
-
-- The app expects the D1 binding to be named `DB`.
-- Do not rename bindings casually; code depends on `env.DB`.
-- Scheduled logic should continue to run through `runScheduledReminders()`.
-- Respect the current noon-in-`America/Chicago` behavior unless the product requirement changes.
-- If you change bindings, vars, or cron config, update `wrangler.jsonc` and rerun `npm run cf-typegen`.
-
-## Discord-Specific Guidelines
-
-- Verify interaction signatures before processing requests.
-- Create/list/delete interaction responses are ephemeral by design.
-- Public channel messages are only for the scheduled reminder flow.
-- Keep slash command schemas in sync with registration.
-- If you change command definitions in `src/commands.ts`, re-run `npm run register:commands`.
+- Avoid `any` and broad casts.
+- Prefer explicit interfaces for shared shapes and explicit function return types for public APIs.
+- Use narrow unions and `undefined` checks instead of `as` where possible.
+- Use `as` only when the runtime shape is proven (e.g., after JSON-schema validation or a trusted parse).
 
 ## Error Handling
 
-- Prefer early returns for validation failures.
-- Return user-facing validation errors as simple ephemeral messages.
-- Throw errors for infrastructure failures that should surface in logs, such as Discord API failures.
-- Include enough context in thrown error messages to diagnose failures.
-- Use explicit HTTP status codes for unauthorized or unsupported requests.
+- Fail early for validation errors; return clear user-facing messages (ephemeral Discord responses where appropriate).
+- Throw for infrastructure/third-party failures so they surface in logs and can be retried.
+- Include contextual information in thrown errors to assist debugging (IDs, guild, user, request hints), but do not leak secrets.
+- Use explicit HTTP status codes for upstream responses (401, 403, 422, 500, etc.).
+
+## Worker & Cloudflare Guidelines
+
+- The D1 binding is expected to be named `DB`. Do not rename bindings without updating `wrangler.jsonc` and types.
+- Keep scheduled logic in `runScheduledReminders()` and preserve the noon-in-`America/Chicago` behavior unless product changes.
+- If you change bindings, cron, or env names, update `wrangler.jsonc` and run: `npm run cf-typegen`.
+
+## Discord-Specific Guidelines
+
+- Always verify interaction signatures before processing Discord requests.
+- Interaction responses for create/list/delete are ephemeral by design; public channel messages are used only for scheduled reminders.
+- Keep slash command definitions in `src/commands.ts` in sync with registration; re-run `npm run register:commands` after changes.
 
 ## Database Guidelines
 
-- Keep SQL explicit and local to `src/reminders.ts` unless a new domain module is justified.
-- Use prepared statements and `.bind(...)` for parameterized SQL.
-- Preserve the ownership constraints around guild ID and creator user ID.
-- Maintain delivery idempotency via `delivery_log`.
-- If schema changes are needed, add a new migration file rather than editing old production migrations casually.
+- Keep SQL queries explicit and local to `src/reminders.ts` unless creating a new domain module.
+- Use prepared statements and `.bind(...)` for parameterized SQL to avoid injection.
+- Preserve ownership constraints (guild ID, creator user ID) in queries and access checks.
+- Maintain delivery idempotency via `delivery_log` table and guards.
+- Schema changes belong in new migration files; do not edit historical migrations.
 
 ## Testing Guidelines
 
-- Add or update tests when changing scheduler logic, date logic, command validation, or D1 behavior.
-- Prefer targeted unit tests in `tests/` over manual-only verification.
-- Follow existing test style: `describe` blocks by module/domain, `beforeEach` for D1 reset/setup, and `vi.stubGlobal("fetch", ...)` for Discord API mocking.
-- When changing cron behavior, test both scheduled-window and forced/manual execution.
+- Add/update tests when changing scheduler/date logic, command validation, or D1 behavior.
+- Prefer targeted unit tests in `tests/` with small setup/teardown.
+- Use `beforeEach` for D1 reset/setup and `vi.stubGlobal("fetch", ...)` to mock Discord API calls.
+- When changing cron behavior, test both scheduled-window and forced/manual execution paths.
 
-## Editing Guidance for Agents
+## Editing Guidance For Agents
 
 - Make the smallest correct change.
-- Do not introduce new frameworks or large abstractions without clear need.
-- Preserve current user-visible message formats unless the user asks to change them.
-- Keep reminder messages plain; do not re-theme the message text.
-- Avoid unrelated refactors while implementing feature work.
-- If you modify `wrangler.jsonc`, `package.json`, or migrations, verify with commands afterward.
+- Don't introduce new frameworks or large abstractions unless requested.
+- Preserve user-visible message formats unless instructed otherwise.
+- Avoid unrelated refactors in the same change.
 
 ## Minimum Verification Before Finishing
 
-- Run `npm run check`
-- Run `npm test`
-- If config changed, run `npm run cf-typegen`
-- If command schema changed, note that `npm run register:commands` is required
-- If D1 schema changed, note which migration command the user should run
+- Run typecheck: `npm run check`.
+- Run tests: `npm test` (and a targeted single-test run when appropriate).
+- If you modified `wrangler.jsonc` or bindings: `npm run cf-typegen`.
+- If you modified commands: `npm run register:commands`.
+- If you modified DB schema: run the appropriate migration command and note whether `db:migrate:local` or `db:migrate:remote` is needed.
 
-## Notes for Future Agents
+## Notes For Future Agents
 
-- There is currently an admin route at `POST /admin/run-reminders` protected by `ADMIN_API_TOKEN`.
-- Use that route for immediate reminder-delivery testing instead of waiting for the noon cron window.
-- Local and remote D1 environments can diverge; be explicit about which one you are testing.
+- Admin route: `POST /admin/run-reminders` protected by `ADMIN_API_TOKEN` — useful for forcing deliveries during testing.
+- Local and remote D1 can diverge; be explicit which env you are testing against.
+- If you add Cursor/Copilot rules, include them here and explain their effect on automated agents.
+
+If anything in this file conflicts with runtime configuration or package.json scripts, prefer the source of truth (package.json, wrangler.jsonc) and update this document.
