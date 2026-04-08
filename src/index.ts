@@ -4,6 +4,7 @@ import { InteractionResponseType, InteractionType, jsonResponse, verifyDiscordRe
 import { runScheduledReminders } from "./scheduler";
 import type { DiscordInteraction, Env } from "./types";
 import * as Sentry from "@sentry/cloudflare";
+import { captureException, logCommandInteraction, logSchedulerRun } from "./logging";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -11,10 +12,6 @@ function hasValidAdminToken(request: Request, adminToken: string): boolean {
   const authorization = request.headers.get("authorization");
   return authorization === `Bearer ${adminToken}`;
 }
-
-app.get("/sentry-debug", (c) => {
-  throw new Error("Test error for Sentry monitoring");
-});
 
 app.get("/", (c) => {
   const installUrl = c.env.INSTALL_URL;
@@ -91,51 +88,108 @@ app.post("/interactions", async (c) => {
   const rawBody = await c.req.text();
   const verified = await verifyDiscordRequest(c.req.raw, c.env.DISCORD_PUBLIC_KEY, rawBody);
   if (!verified) {
+    Sentry.logger.warn("discord_request_verification_failed", {
+      path: "/interactions"
+    });
     return new Response("Bad request signature.", { status: 401 });
   }
 
-  const interaction = JSON.parse(rawBody) as DiscordInteraction;
+  let interaction: DiscordInteraction;
+  try {
+    interaction = JSON.parse(rawBody) as DiscordInteraction;
+  } catch (error) {
+    captureException(error, { action: "parse_interaction_body" });
+    return jsonResponse({ error: "Invalid JSON." }, 400);
+  }
+
   if (interaction.type === InteractionType.Ping) {
     return jsonResponse({ type: InteractionResponseType.Pong });
   }
 
   if (interaction.type === InteractionType.ApplicationCommand) {
-    return handleCommand(c.env, interaction);
+    const commandName = interaction.data?.name;
+    const guildId = interaction.guild_id;
+    const userId = interaction.member?.user?.id ?? interaction.user?.id;
+    const channelId = interaction.channel_id;
+
+    logCommandInteraction(commandName, guildId, userId, channelId);
+
+    try {
+      return await handleCommand(c.env, interaction);
+    } catch (error) {
+      captureException(error, {
+        action: "handle_command",
+        command: commandName,
+        guildId,
+        userId,
+        channelId
+      });
+      return jsonResponse({ error: "An error occurred while processing your command." }, 500);
+    }
   }
 
+  Sentry.logger.warn("unsupported_interaction_type", {
+    type: interaction.type
+  });
   return jsonResponse({ error: "Unsupported interaction type." }, 400);
 });
 
 app.post("/admin/run-reminders", async (c) => {
   if (!hasValidAdminToken(c.req.raw, c.env.ADMIN_API_TOKEN)) {
+    Sentry.logger.warn("unauthorized_admin_request", {
+      path: "/admin/run-reminders"
+    });
     return jsonResponse({ error: "Unauthorized" }, 401);
   }
 
   let body: { force?: boolean } = {};
   const contentType = c.req.header("content-type") ?? "";
   if (contentType.includes("application/json")) {
-    body = await c.req.json<{ force?: boolean }>();
+    try {
+      body = await c.req.json<{ force?: boolean }>();
+    } catch (error) {
+      captureException(error, { action: "parse_admin_request_body" });
+      return jsonResponse({ error: "Invalid JSON." }, 400);
+    }
   }
 
-  const summary = await runScheduledReminders(c.env, {
-    force: body.force === true
-  });
+  try {
+    const summary = await runScheduledReminders(c.env, {
+      force: body.force === true
+    });
 
-  return jsonResponse(summary);
+    logSchedulerRun(summary.forced, summary.isNoonWindow, summary.today, {
+      scanned: summary.scanned,
+      delivered: summary.delivered,
+      skippedDuplicate: summary.skippedDuplicate,
+      deactivatedExpired: summary.deactivatedExpired,
+      deactivatedAfterToday: summary.deactivatedAfterToday
+    });
+
+    return jsonResponse(summary);
+  } catch (error) {
+    captureException(error, {
+      action: "run_scheduled_reminders",
+      forced: body.force
+    });
+    return jsonResponse({ error: "An error occurred while running reminders." }, 500);
+  }
 });
 
-const worker = {
-  fetch: app.fetch,
-  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(runScheduledReminders(env));
-  }
-};
-
-export default Sentry.withSentry(
+const withSentry = Sentry.withSentry(
   (env: Env) => ({
     dsn: "https://7104c130aa4d9b8098653f802394f957@o4511157483077632.ingest.us.sentry.io/4511185732435968",
     sendDefaultPii: true,
     enableLogs: true,
   }),
-  worker satisfies ExportedHandler<Env>
-)
+  app
+);
+
+const worker = {
+  fetch: withSentry.fetch,
+  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(runScheduledReminders(env));
+  }
+};
+
+export default worker;

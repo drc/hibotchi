@@ -3,6 +3,7 @@ import { createReminder, deleteUserReminder, listUserReminders } from "./reminde
 import { CHICAGO_TIME_ZONE, chicagoDateString, compareDateStrings, formatDiscordDateTag, isBeforeChicagoNoon, isValidDateString } from "./time";
 import type { DiscordInteraction, Env } from "./types";
 import * as Sentry from "@sentry/cloudflare";
+import { captureException, logReminderOperation, logValidationError } from "./logging";
 
 const TITLE_MAX_LENGTH = 120;
 
@@ -78,6 +79,7 @@ export async function handleCommand(env: Env, interaction: DiscordInteraction): 
 async function handleCreateTicket(env: Env, interaction: DiscordInteraction): Promise<Response> {
   const context = requireGuildInteraction(interaction);
   if (context instanceof Response) {
+    logValidationError("not_in_guild", interaction.guild_id, getInteractionUserId(interaction));
     return context;
   }
 
@@ -87,71 +89,135 @@ async function handleCreateTicket(env: Env, interaction: DiscordInteraction): Pr
   const targetDate = typeof rawDate === "string" ? rawDate.trim() : "";
 
   if (!title) {
+    logValidationError("empty_title", context.guildId, context.userId);
     return ephemeralMessage("Title is required.");
   }
 
   if (title.length > TITLE_MAX_LENGTH) {
+    logValidationError("title_too_long", context.guildId, context.userId, {
+      titleLength: title.length,
+      maxLength: TITLE_MAX_LENGTH
+    });
     return ephemeralMessage(`Title must be ${TITLE_MAX_LENGTH} characters or fewer.`);
   }
 
   if (!isValidDateString(targetDate)) {
+    logValidationError("invalid_date_format", context.guildId, context.userId, {
+      providedDate: targetDate
+    });
     return ephemeralMessage("Date must use YYYY-MM-DD format.");
   }
 
   const today = chicagoDateString();
   const dateComparison = compareDateStrings(targetDate, today);
   if (dateComparison < 0) {
+    logValidationError("date_in_past", context.guildId, context.userId, {
+      targetDate,
+      today
+    });
     return ephemeralMessage("Date must be today or later.");
   }
 
   if (dateComparison === 0 && !isBeforeChicagoNoon()) {
+    logValidationError("same_day_after_noon", context.guildId, context.userId, {
+      targetDate
+    });
     return ephemeralMessage("Same-day tickets must be created before 12:00 PM America/Chicago.");
   }
 
-  const reminderId = await createReminder(env.DB, {
-    guildId: context.guildId,
-    channelId: context.channelId,
-    creatorUserId: context.userId,
-    eventTitle: title,
-    targetDate,
-    timezone: CHICAGO_TIME_ZONE
-  });
+  try {
+    const reminderId = await createReminder(env.DB, {
+      guildId: context.guildId,
+      channelId: context.channelId,
+      creatorUserId: context.userId,
+      eventTitle: title,
+      targetDate,
+      timezone: CHICAGO_TIME_ZONE
+    });
 
-  return ephemeralMessage(`Saved ticket #${reminderId} for **${title}** on ${formatDiscordDateTag(targetDate)}.`);
+    logReminderOperation("created", reminderId, context.guildId, context.userId, {
+      eventTitle: title,
+      targetDate
+    });
+
+    return ephemeralMessage(`Saved ticket #${reminderId} for **${title}** on ${formatDiscordDateTag(targetDate)}.`);
+  } catch (error) {
+    captureException(error, {
+      action: "create_reminder",
+      guildId: context.guildId,
+      userId: context.userId,
+      channelId: context.channelId,
+      eventTitle: title,
+      targetDate
+    });
+    return ephemeralMessage("Failed to create ticket. Please try again.");
+  }
 }
 
 async function handleListTickets(env: Env, interaction: DiscordInteraction): Promise<Response> {
-  throw new Error("Test error for Sentry monitoring");
   const context = requireGuildInteraction(interaction);
   if (context instanceof Response) {
+    logValidationError("not_in_guild", interaction.guild_id, getInteractionUserId(interaction));
     return context;
   }
 
-  const reminders = await listUserReminders(env.DB, context.guildId, context.userId);
-  if (reminders.length === 0) {
-    return ephemeralMessage("You do not have any active tickets.");
-  }
+  try {
+    const reminders = await listUserReminders(env.DB, context.guildId, context.userId);
 
-  const lines = reminders.map((reminder) => `#${reminder.id} **${reminder.event_title}** (${formatDiscordDateTag(reminder.target_date)})`);
-  return ephemeralMessage(lines.join("\n"));
+    logReminderOperation("listed", undefined, context.guildId, context.userId, {
+      count: reminders.length
+    });
+
+    if (reminders.length === 0) {
+      return ephemeralMessage("You do not have any active tickets.");
+    }
+
+    const lines = reminders.map((reminder) => `#${reminder.id} **${reminder.event_title}** (${formatDiscordDateTag(reminder.target_date)})`);
+    return ephemeralMessage(lines.join("\n"));
+  } catch (error) {
+    captureException(error, {
+      action: "list_reminders",
+      guildId: context.guildId,
+      userId: context.userId
+    });
+    return ephemeralMessage("Failed to list tickets. Please try again.");
+  }
 }
 
 async function handleDeleteTicket(env: Env, interaction: DiscordInteraction): Promise<Response> {
   const context = requireGuildInteraction(interaction);
   if (context instanceof Response) {
+    logValidationError("not_in_guild", interaction.guild_id, getInteractionUserId(interaction));
     return context;
   }
 
   const rawId = getOptionValue(interaction.data?.options, "id");
   const reminderId = typeof rawId === "number" ? rawId : Number(rawId);
   if (!Number.isInteger(reminderId) || reminderId < 1) {
+    logValidationError("invalid_reminder_id", context.guildId, context.userId, {
+      providedId: rawId
+    });
     return ephemeralMessage("A valid numeric ticket ID is required.");
   }
 
-  const deleted = await deleteUserReminder(env.DB, context.guildId, context.userId, reminderId);
-  if (!deleted) {
-    return ephemeralMessage("Ticket not found.");
-  }
+  try {
+    const deleted = await deleteUserReminder(env.DB, context.guildId, context.userId, reminderId);
+    if (!deleted) {
+      logValidationError("reminder_not_found", context.guildId, context.userId, {
+        reminderId
+      });
+      return ephemeralMessage("Ticket not found.");
+    }
 
-  return ephemeralMessage(`Deleted ticket #${reminderId}.`);
+    logReminderOperation("deleted", reminderId, context.guildId, context.userId);
+    return ephemeralMessage(`Deleted ticket #${reminderId}.`);
+  } catch (error) {
+    captureException(error, {
+      action: "delete_reminder",
+      guildId: context.guildId,
+      userId: context.userId,
+      reminderId
+    });
+    return ephemeralMessage("Failed to delete ticket. Please try again.");
+  }
 }

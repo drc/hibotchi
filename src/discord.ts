@@ -1,5 +1,6 @@
 import type { DiscordInteraction, Env, SlashCommandOption } from "./types";
 import * as Sentry from "@sentry/cloudflare";
+import { captureException, logDiscordApiCall } from "./logging";
 
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 
@@ -79,18 +80,38 @@ export function ephemeralMessage(content: string): Response {
 }
 
 export async function postChannelMessage(env: Env, channelId: string, content: string): Promise<void> {
-  const response = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
-    method: "POST",
-    headers: {
-      authorization: `Bot ${env.DISCORD_BOT_TOKEN}`,
-      "content-type": "application/json; charset=utf-8"
-    },
-    body: JSON.stringify({ content })
-  });
+  const endpoint = `/channels/${channelId}/messages`;
+  try {
+    const response = await fetch(`${DISCORD_API_BASE}${endpoint}`, {
+      method: "POST",
+      headers: {
+        authorization: `Bot ${env.DISCORD_BOT_TOKEN}`,
+        "content-type": "application/json; charset=utf-8"
+      },
+      body: JSON.stringify({ content })
+    });
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Discord channel message failed: ${response.status} ${body}`);
+    logDiscordApiCall(endpoint, "POST", response.status, response.ok);
+
+    if (!response.ok) {
+      const body = await response.text();
+      const error = new Error(`Discord channel message failed: ${response.status} ${body}`);
+      captureException(error, {
+        action: "post_channel_message",
+        channelId,
+        status: response.status
+      });
+      throw error;
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("Discord channel message failed")) {
+      throw error;
+    }
+    captureException(error, {
+      action: "post_channel_message",
+      channelId
+    });
+    throw error;
   }
 }
 
@@ -99,20 +120,39 @@ export async function registerGuildCommands(env: Env, commands: unknown[]): Prom
     throw new Error("COMMAND_GUILD_ID is required to register commands.");
   }
 
-  const response = await fetch(
-    `${DISCORD_API_BASE}/applications/${env.DISCORD_APPLICATION_ID}/guilds/${env.COMMAND_GUILD_ID}/commands`,
-    {
+  const endpoint = `/applications/${env.DISCORD_APPLICATION_ID}/guilds/${env.COMMAND_GUILD_ID}/commands`;
+  try {
+    const response = await fetch(`${DISCORD_API_BASE}${endpoint}`, {
       method: "PUT",
       headers: {
         authorization: `Bot ${env.DISCORD_BOT_TOKEN}`,
         "content-type": "application/json; charset=utf-8"
       },
       body: JSON.stringify(commands)
-    }
-  );
+    });
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Discord command registration failed: ${response.status} ${body}`);
+    logDiscordApiCall(endpoint, "PUT", response.status, response.ok, {
+      commandCount: commands.length
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      const error = new Error(`Discord command registration failed: ${response.status} ${body}`);
+      captureException(error, {
+        action: "register_commands",
+        status: response.status,
+        commandCount: commands.length
+      });
+      throw error;
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("Discord command registration failed")) {
+      throw error;
+    }
+    captureException(error, {
+      action: "register_commands",
+      commandCount: commands.length
+    });
+    throw error;
   }
 }
