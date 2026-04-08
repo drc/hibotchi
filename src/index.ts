@@ -3,6 +3,7 @@ import { handleCommand } from "./commands";
 import { InteractionResponseType, InteractionType, jsonResponse, verifyDiscordRequest } from "./discord";
 import { runScheduledReminders } from "./scheduler";
 import type { DiscordInteraction, Env } from "./types";
+import * as Sentry from "@sentry/cloudflare";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -10,6 +11,10 @@ function hasValidAdminToken(request: Request, adminToken: string): boolean {
   const authorization = request.headers.get("authorization");
   return authorization === `Bearer ${adminToken}`;
 }
+
+app.get("/sentry-debug", (c) => {
+  throw new Error("Test error for Sentry monitoring");
+});
 
 app.get("/", (c) => {
   const installUrl = c.env.INSTALL_URL;
@@ -126,4 +131,11 @@ const worker = {
   }
 };
 
-export default worker;
+export default Sentry.withSentry(
+  (env: Env) => ({
+    dsn: "https://7104c130aa4d9b8098653f802394f957@o4511157483077632.ingest.us.sentry.io/4511185732435968",
+    sendDefaultPii: true,
+    enableLogs: true,
+  }),
+  worker satisfies ExportedHandler<Env>
+)

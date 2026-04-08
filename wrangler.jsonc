@@ -23,8 +23,12 @@
 		}
 	],
 	"triggers": {
-    "crons": [
-      "0 17 * * *"
-    ]
-	}
+		"crons": [
+			"0 17 * * *"
+		]
+	},
+	"version_metadata": {
+		"binding": "CF_VERSION_METADATA"
+	},
+	"upload_source_maps": true
 }

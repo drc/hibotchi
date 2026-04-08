@@ -2,6 +2,7 @@ import { ephemeralMessage, getInteractionUserId, getOptionValue } from "./discor
 import { createReminder, deleteUserReminder, listUserReminders } from "./reminders";
 import { CHICAGO_TIME_ZONE, chicagoDateString, compareDateStrings, formatDiscordDateTag, isBeforeChicagoNoon, isValidDateString } from "./time";
 import type { DiscordInteraction, Env } from "./types";
+import * as Sentry from "@sentry/cloudflare";
 
 const TITLE_MAX_LENGTH = 120;
 
@@ -120,6 +121,7 @@ async function handleCreateTicket(env: Env, interaction: DiscordInteraction): Pr
 }
 
 async function handleListTickets(env: Env, interaction: DiscordInteraction): Promise<Response> {
+  throw new Error("Test error for Sentry monitoring");
   const context = requireGuildInteraction(interaction);
   if (context instanceof Response) {
     return context;

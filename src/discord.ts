@@ -1,4 +1,5 @@
 import type { DiscordInteraction, Env, SlashCommandOption } from "./types";
+import * as Sentry from "@sentry/cloudflare";
 
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 
@@ -35,7 +36,7 @@ export async function verifyDiscordRequest(request: Request, publicKey: string, 
   if (!signature || !timestamp) {
     return false;
   }
-
+  
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
     "raw",
