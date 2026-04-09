@@ -1,7 +1,6 @@
 import { postChannelMessage } from "./discord";
 import { deactivateReminder, getActiveReminders, recordDelivery } from "./reminders";
 import { chicagoDateString, compareDateStrings, formatReminderMessage, isChicagoNoon } from "./time";
-import type { Env } from "./types";
 import * as Sentry from "@sentry/cloudflare";
 import { captureException, logSchedulerRun } from "./logging";
 

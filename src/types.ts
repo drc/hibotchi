@@ -1,13 +1,3 @@
-export interface Env {
-  DB: D1Database;
-  ADMIN_API_TOKEN: string;
-  DISCORD_APPLICATION_ID: string;
-  DISCORD_BOT_TOKEN: string;
-  DISCORD_PUBLIC_KEY: string;
-  INSTALL_URL: string;
-  COMMAND_GUILD_ID?: string;
-}
-
 export interface ReminderRecord {
   id: number;
   guild_id: string;

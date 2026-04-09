@@ -2,3 +2,5 @@ allowBuilds:
   esbuild: true
   sharp: true
   workerd: true
+overrides:
+  wrangler@>=4.0.0 <4.59.1: '>=4.59.1'

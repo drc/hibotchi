@@ -12,7 +12,8 @@
 	},
 	"vars": {
 		"INSTALL_URL": "https://discord.com/oauth2/authorize?client_id=1490189018929954956&scope=bot%20applications.commands&permissions=3072",
-		"ADMIN_API_TOKEN": "poopoo"
+		"ADMIN_API_TOKEN": "poopoo",
+		"SENTRY_ENV": "production"
 	},
 	"d1_databases": [
 		{

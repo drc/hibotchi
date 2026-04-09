@@ -1,4 +1,4 @@
-import type { DiscordInteraction, Env, SlashCommandOption } from "./types";
+import type { DiscordInteraction, SlashCommandOption } from "./types";
 import * as Sentry from "@sentry/cloudflare";
 import { captureException, logDiscordApiCall } from "./logging";
 

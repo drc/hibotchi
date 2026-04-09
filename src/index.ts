@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { handleCommand } from "./commands";
 import { InteractionResponseType, InteractionType, jsonResponse, verifyDiscordRequest } from "./discord";
 import { runScheduledReminders } from "./scheduler";
-import type { DiscordInteraction, Env } from "./types";
+import type { DiscordInteraction } from "./types";
 import * as Sentry from "@sentry/cloudflare";
 import { captureException, logCommandInteraction, logSchedulerRun } from "./logging";
 
@@ -178,7 +178,8 @@ app.post("/admin/run-reminders", async (c) => {
 
 const withSentry = Sentry.withSentry(
   (env: Env) => ({
-    dsn: "https://7104c130aa4d9b8098653f802394f957@o4511157483077632.ingest.us.sentry.io/4511185732435968",
+    dsn: env.SENTRY_DSN,
+    environment: env.SENTRY_ENV ?? "production",
     sendDefaultPii: true,
     enableLogs: true,
   }),

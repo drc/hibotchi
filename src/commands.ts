@@ -1,7 +1,7 @@
 import { ephemeralMessage, getInteractionUserId, getOptionValue } from "./discord";
 import { createReminder, deleteUserReminder, listUserReminders } from "./reminders";
 import { CHICAGO_TIME_ZONE, chicagoDateString, compareDateStrings, formatDiscordDateTag, isBeforeChicagoNoon, isValidDateString } from "./time";
-import type { DiscordInteraction, Env } from "./types";
+import type { DiscordInteraction } from "./types";
 import * as Sentry from "@sentry/cloudflare";
 import { captureException, logReminderOperation, logValidationError } from "./logging";
 
@@ -162,7 +162,13 @@ async function handleListTickets(env: Env, interaction: DiscordInteraction): Pro
   }
 
   try {
+    const start = Date.now();
     const reminders = await listUserReminders(env.DB, context.guildId, context.userId);
+
+    const duration = Date.now() - start;
+    Sentry.metrics.distribution("list_response_time", duration, {
+      unit: "millisecond",
+    });
 
     logReminderOperation("listed", undefined, context.guildId, context.userId, {
       count: reminders.length
@@ -173,6 +179,15 @@ async function handleListTickets(env: Env, interaction: DiscordInteraction): Pro
     }
 
     const lines = reminders.map((reminder) => `#${reminder.id} **${reminder.event_title}** (${formatDiscordDateTag(reminder.target_date)})`);
+
+    Sentry.metrics.count("list_reminder_calls", 1, {
+      attributes: {
+        action: "list_reminders",
+        guildId: context.guildId,
+        userId: context.userId
+      },
+    });
+
     return ephemeralMessage(lines.join("\n"));
   } catch (error) {
     captureException(error, {
