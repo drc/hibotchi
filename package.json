@@ -21,19 +21,19 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@sentry/cloudflare": "^10.47.0",
-    "hono": "^4.12.12"
+    "@sentry/cloudflare": "^10.48.0",
+    "hono": "^4.12.14"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.8.71",
     "@sentry/cli": "^2.58.5",
-    "@types/node": "^25.5.2",
+    "@types/node": "^25.6.0",
     "oxfmt": "^0.45.0",
     "oxlint": "^1.60.0",
     "oxlint-tsgolint": "^0.21.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.1.4",
-    "wrangler": "^4.81.0"
+    "wrangler": "^4.83.0"
   }
 }
