@@ -16,7 +16,7 @@ function getChicagoFormatter() {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-    hourCycle: "h23"
+    hourCycle: "h23",
   });
 }
 
@@ -35,7 +35,7 @@ export function getChicagoNowParts(now = new Date()): ChicagoParts {
     month: readPart("month"),
     day: readPart("day"),
     hour: readPart("hour"),
-    minute: readPart("minute")
+    minute: readPart("minute"),
   };
 }
 

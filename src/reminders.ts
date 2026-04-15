@@ -1,5 +1,5 @@
-import type { CreateReminderInput, ReminderRecord } from "./types";
-import { captureException, logDatabaseOperation } from "./logging";
+import type { CreateReminderInput, ReminderRecord } from "@/types";
+import { captureException, logDatabaseOperation } from "@/logging";
 
 function asReminder(row: unknown): ReminderRecord {
   return row as ReminderRecord;
@@ -20,7 +20,7 @@ export async function createReminder(db: D1Database, input: CreateReminderInput)
          active,
          created_at,
          updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`
+       ) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`,
       )
       .bind(
         input.guildId,
@@ -30,13 +30,13 @@ export async function createReminder(db: D1Database, input: CreateReminderInput)
         input.targetDate,
         input.timezone,
         now,
-        now
+        now,
       )
       .run();
 
     logDatabaseOperation("insert", "reminders", true, {
       guildId: input.guildId,
-      userId: input.creatorUserId
+      userId: input.creatorUserId,
     });
 
     return Number(result.meta.last_row_id);
@@ -45,7 +45,7 @@ export async function createReminder(db: D1Database, input: CreateReminderInput)
     captureException(error, {
       action: "insert_reminder",
       guildId: input.guildId,
-      userId: input.creatorUserId
+      userId: input.creatorUserId,
     });
     throw error;
   }
@@ -57,7 +57,7 @@ export async function listUserReminders(db: D1Database, guildId: string, userId:
       .prepare(
         `SELECT * FROM reminders
        WHERE guild_id = ? AND creator_user_id = ? AND active = 1
-       ORDER BY target_date ASC, id ASC`
+       ORDER BY target_date ASC, id ASC`,
       )
       .bind(guildId, userId)
       .all();
@@ -65,7 +65,7 @@ export async function listUserReminders(db: D1Database, guildId: string, userId:
     logDatabaseOperation("select", "reminders", true, {
       guildId,
       userId,
-      count: result.results?.length ?? 0
+      count: result.results?.length ?? 0,
     });
 
     return (result.results ?? []).map(asReminder);
@@ -74,18 +74,23 @@ export async function listUserReminders(db: D1Database, guildId: string, userId:
     captureException(error, {
       action: "select_reminders",
       guildId,
-      userId
+      userId,
     });
     throw error;
   }
 }
 
-export async function deleteUserReminder(db: D1Database, guildId: string, userId: string, reminderId: number): Promise<boolean> {
+export async function deleteUserReminder(
+  db: D1Database,
+  guildId: string,
+  userId: string,
+  reminderId: number,
+): Promise<boolean> {
   try {
     const result = await db
       .prepare(
         `DELETE FROM reminders
-       WHERE id = ? AND guild_id = ? AND creator_user_id = ?`
+       WHERE id = ? AND guild_id = ? AND creator_user_id = ?`,
       )
       .bind(reminderId, guildId, userId)
       .run();
@@ -95,7 +100,7 @@ export async function deleteUserReminder(db: D1Database, guildId: string, userId
       reminderId,
       guildId,
       userId,
-      deleted
+      deleted,
     });
 
     return deleted;
@@ -105,7 +110,7 @@ export async function deleteUserReminder(db: D1Database, guildId: string, userId
       action: "delete_reminder",
       reminderId,
       guildId,
-      userId
+      userId,
     });
     throw error;
   }
@@ -117,19 +122,19 @@ export async function getActiveReminders(db: D1Database): Promise<ReminderRecord
       .prepare(
         `SELECT * FROM reminders
        WHERE active = 1
-       ORDER BY target_date ASC, id ASC`
+       ORDER BY target_date ASC, id ASC`,
       )
       .all();
 
     logDatabaseOperation("select", "reminders", true, {
-      count: result.results?.length ?? 0
+      count: result.results?.length ?? 0,
     });
 
     return (result.results ?? []).map(asReminder);
   } catch (error) {
     logDatabaseOperation("select", "reminders", false);
     captureException(error, {
-      action: "get_active_reminders"
+      action: "get_active_reminders",
     });
     throw error;
   }
@@ -141,19 +146,19 @@ export async function deactivateReminder(db: D1Database, reminderId: number): Pr
       .prepare(
         `UPDATE reminders
        SET active = 0, updated_at = ?
-       WHERE id = ?`
+       WHERE id = ?`,
       )
       .bind(new Date().toISOString(), reminderId)
       .run();
 
     logDatabaseOperation("update", "reminders", true, {
-      reminderId
+      reminderId,
     });
   } catch (error) {
     logDatabaseOperation("update", "reminders", false);
     captureException(error, {
       action: "deactivate_reminder",
-      reminderId
+      reminderId,
     });
     throw error;
   }
@@ -167,7 +172,7 @@ export async function recordDelivery(db: D1Database, reminderId: number, sentOn:
          reminder_id,
          sent_on,
          created_at
-       ) VALUES (?, ?, ?)`
+       ) VALUES (?, ?, ?)`,
       )
       .bind(reminderId, sentOn, new Date().toISOString())
       .run();
@@ -176,7 +181,7 @@ export async function recordDelivery(db: D1Database, reminderId: number, sentOn:
     logDatabaseOperation("insert", "delivery_log", true, {
       reminderId,
       sentOn,
-      inserted
+      inserted,
     });
 
     return inserted;
@@ -185,7 +190,7 @@ export async function recordDelivery(db: D1Database, reminderId: number, sentOn:
     captureException(error, {
       action: "record_delivery",
       reminderId,
-      sentOn
+      sentOn,
     });
     throw error;
   }

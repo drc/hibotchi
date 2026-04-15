@@ -3,13 +3,7 @@ import * as Sentry from "@sentry/cloudflare";
 /**
  * Sensitive keys to filter from logs to prevent leaking secrets
  */
-const SENSITIVE_KEYS = [
-  "ADMIN_API_TOKEN",
-  "DISCORD_BOT_TOKEN",
-  "DISCORD_PUBLIC_KEY",
-  "authorization",
-  "Authorization"
-];
+const SENSITIVE_KEYS = ["ADMIN_API_TOKEN", "DISCORD_BOT_TOKEN", "DISCORD_PUBLIC_KEY", "authorization", "Authorization"];
 
 /**
  * Recursively sanitize an object to remove sensitive data
@@ -51,14 +45,14 @@ export function logCommandInteraction(
   guildId: string | undefined,
   userId: string | undefined,
   channelId: string | undefined,
-  details?: Record<string, unknown>
+  details?: Record<string, unknown>,
 ): void {
   Sentry.logger.info("command_invoked", {
     command: commandName,
     guildId,
     userId,
     channelId,
-    ...details
+    ...details,
   });
 }
 
@@ -70,13 +64,13 @@ export function logReminderOperation(
   reminderId?: number,
   guildId?: string,
   userId?: string,
-  details?: Record<string, unknown>
+  details?: Record<string, unknown>,
 ): void {
   Sentry.logger.info(`reminder_${operation}`, {
     reminderId,
     guildId,
     userId,
-    ...details
+    ...details,
   });
 }
 
@@ -93,7 +87,7 @@ export function logSchedulerRun(
     skippedDuplicate: number;
     deactivatedExpired: number;
     deactivatedAfterToday: number;
-  }
+  },
 ): void {
   Sentry.logger.info("scheduler_run", {
     forced,
@@ -103,7 +97,7 @@ export function logSchedulerRun(
     delivered: summary.delivered,
     skippedDuplicate: summary.skippedDuplicate,
     deactivatedExpired: summary.deactivatedExpired,
-    deactivatedAfterToday: summary.deactivatedAfterToday
+    deactivatedAfterToday: summary.deactivatedAfterToday,
   });
 }
 
@@ -115,7 +109,7 @@ export function logDiscordApiCall(
   method: string,
   status: number,
   success: boolean,
-  details?: Record<string, unknown>
+  details?: Record<string, unknown>,
 ): void {
   const level = success ? "info" : "warn";
   const logger = Sentry.logger[level as "info" | "warn"];
@@ -124,7 +118,7 @@ export function logDiscordApiCall(
     method,
     status,
     success,
-    ...details
+    ...details,
   });
 }
 
@@ -135,7 +129,7 @@ export function logDatabaseOperation(
   operation: "select" | "insert" | "update" | "delete",
   table: string,
   success: boolean,
-  details?: Record<string, unknown>
+  details?: Record<string, unknown>,
 ): void {
   const level = success ? "info" : "warn";
   const logger = Sentry.logger[level as "info" | "warn"];
@@ -143,7 +137,7 @@ export function logDatabaseOperation(
     operation,
     table,
     success,
-    ...details
+    ...details,
   });
 }
 
@@ -159,22 +153,22 @@ export function captureException(
     userId?: string;
     channelId?: string;
     [key: string]: unknown;
-  }
+  },
 ): void {
   const sanitizedContext = sanitizeObject(context) as Record<string, unknown>;
   if (error instanceof Error) {
     Sentry.captureException(error, {
       contexts: {
-        operation: sanitizedContext
+        operation: sanitizedContext,
       },
-      level: "error"
+      level: "error",
     });
   } else {
     Sentry.captureException(new Error(String(error)), {
       contexts: {
-        operation: sanitizedContext
+        operation: sanitizedContext,
       },
-      level: "error"
+      level: "error",
     });
   }
 }
@@ -186,12 +180,12 @@ export function logValidationError(
   reason: string,
   guildId: string | undefined,
   userId: string | undefined,
-  details?: Record<string, unknown>
+  details?: Record<string, unknown>,
 ): void {
   Sentry.logger.warn("validation_error", {
     reason,
     guildId,
     userId,
-    ...details
+    ...details,
   });
 }

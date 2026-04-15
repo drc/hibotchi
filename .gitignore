@@ -4,3 +4,6 @@ node_modules/
 dist/
 coverage/
 worker-configuration.d.ts
+
+# Sentry Config File
+.sentryclirc

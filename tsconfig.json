@@ -11,7 +11,12 @@
       "node",
       "vitest/globals",
       "@cloudflare/vitest-pool-workers"
-    ]
+    ],
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    }
   },
   "include": [
     "worker-configuration.d.ts",

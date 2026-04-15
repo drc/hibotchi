@@ -1,6 +1,6 @@
-import { postChannelMessage } from "./discord";
-import { deactivateReminder, getActiveReminders, recordDelivery } from "./reminders";
-import { chicagoDateString, compareDateStrings, formatReminderMessage, isChicagoNoon } from "./time";
+import { postChannelMessage } from "@/discord";
+import { deactivateReminder, getActiveReminders, recordDelivery } from "@/reminders";
+import { chicagoDateString, compareDateStrings, formatReminderMessage, isChicagoNoon } from "@/time";
 import * as Sentry from "@sentry/cloudflare";
 import { captureException, logSchedulerRun } from "./logging";
 
@@ -31,7 +31,7 @@ export async function runScheduledReminders(env: Env, options: SchedulerRunOptio
   if (!forced && !isNoonWindow) {
     Sentry.logger.info("scheduler_skipped_outside_window", {
       today,
-      forced
+      forced,
     });
     return {
       attemptedAt: now.toISOString(),
@@ -43,7 +43,7 @@ export async function runScheduledReminders(env: Env, options: SchedulerRunOptio
       skippedDuplicate: 0,
       deactivatedExpired: 0,
       deactivatedAfterToday: 0,
-      skippedOutsideWindow: true
+      skippedOutsideWindow: true,
     };
   }
 
@@ -59,7 +59,7 @@ export async function runScheduledReminders(env: Env, options: SchedulerRunOptio
       skippedDuplicate: 0,
       deactivatedExpired: 0,
       deactivatedAfterToday: 0,
-      skippedOutsideWindow: false
+      skippedOutsideWindow: false,
     };
 
     for (const reminder of reminders) {
@@ -71,7 +71,7 @@ export async function runScheduledReminders(env: Env, options: SchedulerRunOptio
           reminderId: reminder.id,
           guildId: reminder.guild_id,
           targetDate: reminder.target_date,
-          today
+          today,
         });
         continue;
       }
@@ -82,7 +82,7 @@ export async function runScheduledReminders(env: Env, options: SchedulerRunOptio
         Sentry.logger.info("reminder_delivery_duplicate", {
           reminderId: reminder.id,
           guildId: reminder.guild_id,
-          today
+          today,
         });
         continue;
       }
@@ -94,7 +94,7 @@ export async function runScheduledReminders(env: Env, options: SchedulerRunOptio
         Sentry.logger.info("reminder_deactivated_empty_message", {
           reminderId: reminder.id,
           guildId: reminder.guild_id,
-          targetDate: reminder.target_date
+          targetDate: reminder.target_date,
         });
         continue;
       }
@@ -106,14 +106,14 @@ export async function runScheduledReminders(env: Env, options: SchedulerRunOptio
           reminderId: reminder.id,
           guildId: reminder.guild_id,
           channelId: reminder.channel_id,
-          targetDate: reminder.target_date
+          targetDate: reminder.target_date,
         });
       } catch (error) {
         captureException(error, {
           action: "post_channel_message",
           reminderId: reminder.id,
           guildId: reminder.guild_id,
-          channelId: reminder.channel_id
+          channelId: reminder.channel_id,
         });
         continue;
       }
@@ -123,7 +123,7 @@ export async function runScheduledReminders(env: Env, options: SchedulerRunOptio
         summary.deactivatedAfterToday += 1;
         Sentry.logger.info("reminder_deactivated_after_delivery", {
           reminderId: reminder.id,
-          guildId: reminder.guild_id
+          guildId: reminder.guild_id,
         });
       }
     }
@@ -133,7 +133,7 @@ export async function runScheduledReminders(env: Env, options: SchedulerRunOptio
       delivered: summary.delivered,
       skippedDuplicate: summary.skippedDuplicate,
       deactivatedExpired: summary.deactivatedExpired,
-      deactivatedAfterToday: summary.deactivatedAfterToday
+      deactivatedAfterToday: summary.deactivatedAfterToday,
     });
 
     return summary;
@@ -141,7 +141,7 @@ export async function runScheduledReminders(env: Env, options: SchedulerRunOptio
     captureException(error, {
       action: "run_scheduled_reminders",
       forced,
-      today
+      today,
     });
     throw error;
   }

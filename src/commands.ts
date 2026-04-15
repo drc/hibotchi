@@ -1,9 +1,16 @@
-import { ephemeralMessage, getInteractionUserId, getOptionValue } from "./discord";
-import { createReminder, deleteUserReminder, listUserReminders } from "./reminders";
-import { CHICAGO_TIME_ZONE, chicagoDateString, compareDateStrings, formatDiscordDateTag, isBeforeChicagoNoon, isValidDateString } from "./time";
-import type { DiscordInteraction } from "./types";
+import { ephemeralMessage, getInteractionUserId, getOptionValue } from "@/discord";
+import { createReminder, deleteUserReminder, listUserReminders } from "@/reminders";
+import {
+  CHICAGO_TIME_ZONE,
+  chicagoDateString,
+  compareDateStrings,
+  formatDiscordDateTag,
+  isBeforeChicagoNoon,
+  isValidDateString,
+} from "@/time";
+import type { DiscordInteraction } from "@/types";
 import * as Sentry from "@sentry/cloudflare";
-import { captureException, logReminderOperation, logValidationError } from "./logging";
+import { captureException, logReminderOperation, logValidationError } from "@/logging";
 
 const TITLE_MAX_LENGTH = 120;
 
@@ -17,19 +24,19 @@ export const slashCommands = [
         description: "The event title",
         type: 3,
         required: true,
-        max_length: TITLE_MAX_LENGTH
+        max_length: TITLE_MAX_LENGTH,
       },
       {
         name: "date",
         description: "Date in YYYY-MM-DD format",
         type: 3,
-        required: true
-      }
-    ]
+        required: true,
+      },
+    ],
   },
   {
     name: "ticket-list",
-    description: "List your active reminders"
+    description: "List your active reminders",
   },
   {
     name: "ticket-delete",
@@ -40,13 +47,15 @@ export const slashCommands = [
         description: "The reminder ID to delete",
         type: 4,
         required: true,
-        min_value: 1
-      }
-    ]
-  }
+        min_value: 1,
+      },
+    ],
+  },
 ] as const;
 
-function requireGuildInteraction(interaction: DiscordInteraction): { guildId: string; channelId: string; userId: string } | Response {
+function requireGuildInteraction(
+  interaction: DiscordInteraction,
+): { guildId: string; channelId: string; userId: string } | Response {
   const guildId = interaction.guild_id;
   const channelId = interaction.channel_id;
   const userId = getInteractionUserId(interaction);
@@ -96,14 +105,14 @@ async function handleCreateTicket(env: Env, interaction: DiscordInteraction): Pr
   if (title.length > TITLE_MAX_LENGTH) {
     logValidationError("title_too_long", context.guildId, context.userId, {
       titleLength: title.length,
-      maxLength: TITLE_MAX_LENGTH
+      maxLength: TITLE_MAX_LENGTH,
     });
     return ephemeralMessage(`Title must be ${TITLE_MAX_LENGTH} characters or fewer.`);
   }
 
   if (!isValidDateString(targetDate)) {
     logValidationError("invalid_date_format", context.guildId, context.userId, {
-      providedDate: targetDate
+      providedDate: targetDate,
     });
     return ephemeralMessage("Date must use YYYY-MM-DD format.");
   }
@@ -113,14 +122,14 @@ async function handleCreateTicket(env: Env, interaction: DiscordInteraction): Pr
   if (dateComparison < 0) {
     logValidationError("date_in_past", context.guildId, context.userId, {
       targetDate,
-      today
+      today,
     });
     return ephemeralMessage("Date must be today or later.");
   }
 
   if (dateComparison === 0 && !isBeforeChicagoNoon()) {
     logValidationError("same_day_after_noon", context.guildId, context.userId, {
-      targetDate
+      targetDate,
     });
     return ephemeralMessage("Same-day tickets must be created before 12:00 PM America/Chicago.");
   }
@@ -132,12 +141,12 @@ async function handleCreateTicket(env: Env, interaction: DiscordInteraction): Pr
       creatorUserId: context.userId,
       eventTitle: title,
       targetDate,
-      timezone: CHICAGO_TIME_ZONE
+      timezone: CHICAGO_TIME_ZONE,
     });
 
     logReminderOperation("created", reminderId, context.guildId, context.userId, {
       eventTitle: title,
-      targetDate
+      targetDate,
     });
 
     return ephemeralMessage(`Saved ticket #${reminderId} for **${title}** on ${formatDiscordDateTag(targetDate)}.`);
@@ -148,7 +157,7 @@ async function handleCreateTicket(env: Env, interaction: DiscordInteraction): Pr
       userId: context.userId,
       channelId: context.channelId,
       eventTitle: title,
-      targetDate
+      targetDate,
     });
     return ephemeralMessage("Failed to create ticket. Please try again.");
   }
@@ -171,20 +180,22 @@ async function handleListTickets(env: Env, interaction: DiscordInteraction): Pro
     });
 
     logReminderOperation("listed", undefined, context.guildId, context.userId, {
-      count: reminders.length
+      count: reminders.length,
     });
 
     if (reminders.length === 0) {
       return ephemeralMessage("You do not have any active tickets.");
     }
 
-    const lines = reminders.map((reminder) => `#${reminder.id} **${reminder.event_title}** (${formatDiscordDateTag(reminder.target_date)})`);
+    const lines = reminders.map(
+      (reminder) => `#${reminder.id} **${reminder.event_title}** (${formatDiscordDateTag(reminder.target_date)})`,
+    );
 
     Sentry.metrics.count("list_reminder_calls", 1, {
       attributes: {
         action: "list_reminders",
         guildId: context.guildId,
-        userId: context.userId
+        userId: context.userId,
       },
     });
 
@@ -193,7 +204,7 @@ async function handleListTickets(env: Env, interaction: DiscordInteraction): Pro
     captureException(error, {
       action: "list_reminders",
       guildId: context.guildId,
-      userId: context.userId
+      userId: context.userId,
     });
     return ephemeralMessage("Failed to list tickets. Please try again.");
   }
@@ -210,7 +221,7 @@ async function handleDeleteTicket(env: Env, interaction: DiscordInteraction): Pr
   const reminderId = typeof rawId === "number" ? rawId : Number(rawId);
   if (!Number.isInteger(reminderId) || reminderId < 1) {
     logValidationError("invalid_reminder_id", context.guildId, context.userId, {
-      providedId: rawId
+      providedId: rawId,
     });
     return ephemeralMessage("A valid numeric ticket ID is required.");
   }
@@ -219,7 +230,7 @@ async function handleDeleteTicket(env: Env, interaction: DiscordInteraction): Pr
     const deleted = await deleteUserReminder(env.DB, context.guildId, context.userId, reminderId);
     if (!deleted) {
       logValidationError("reminder_not_found", context.guildId, context.userId, {
-        reminderId
+        reminderId,
       });
       return ephemeralMessage("Ticket not found.");
     }
@@ -231,7 +242,7 @@ async function handleDeleteTicket(env: Env, interaction: DiscordInteraction): Pr
       action: "delete_reminder",
       guildId: context.guildId,
       userId: context.userId,
-      reminderId
+      reminderId,
     });
     return ephemeralMessage("Failed to delete ticket. Please try again.");
   }

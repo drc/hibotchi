@@ -5,15 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev --test-scheduled",
-    "deploy": "wrangler deploy",
+    "deploy": "wrangler deploy --outdir dist --upload-source-maps --var SENTRY_RELEASE:$(sentry-cli releases propose-version)",
     "check": "tsc --noEmit",
-    "lint": "tsc --noEmit",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
     "test": "vitest run",
     "test:watch": "vitest",
     "cf-typegen": "wrangler types",
     "db:migrate:local": "wrangler d1 migrations apply hibotchi --local",
     "db:migrate:remote": "wrangler d1 migrations apply hibotchi --remote",
-    "register:commands": "node --env-file=.dev.vars --import tsx scripts/register-commands.ts"
+    "register:commands": "node --env-file=.dev.vars --import tsx scripts/register-commands.ts",
+    "sentry:sourcemaps": "_SENTRY_RELEASE=$(sentry-cli releases propose-version) && sentry-cli releases new $_SENTRY_RELEASE --org=na-avu --project=cf-hibotchi && sentry-cli sourcemaps upload --org=na-avu --project=cf-hibotchi --release=$_SENTRY_RELEASE --strip-prefix 'dist/..' dist",
+    "postdeploy": "pnpm sentry:sourcemaps"
   },
   "dependencies": {
     "@sentry/cloudflare": "^10.47.0",
@@ -21,7 +24,10 @@
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.8.71",
+    "@sentry/cli": "^2.58.5",
     "@types/node": "^25.5.2",
+    "oxfmt": "^0.45.0",
+    "oxlint": "^1.60.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4",

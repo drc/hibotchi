@@ -1,21 +1,20 @@
-import type { DiscordInteraction, SlashCommandOption } from "./types";
-import * as Sentry from "@sentry/cloudflare";
-import { captureException, logDiscordApiCall } from "./logging";
+import type { DiscordInteraction, SlashCommandOption } from "@/types";
+import { captureException, logDiscordApiCall } from "@/logging";
 
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 
 export const InteractionType = {
   Ping: 1,
-  ApplicationCommand: 2
+  ApplicationCommand: 2,
 } as const;
 
 export const InteractionResponseType = {
   Pong: 1,
-  ChannelMessageWithSource: 4
+  ChannelMessageWithSource: 4,
 } as const;
 
 export const MessageFlags = {
-  Ephemeral: 1 << 6
+  Ephemeral: 1 << 6,
 } as const;
 
 function hexToBytes(value: string): Uint8Array {
@@ -37,16 +36,16 @@ export async function verifyDiscordRequest(request: Request, publicKey: string, 
   if (!signature || !timestamp) {
     return false;
   }
-  
+
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
     "raw",
     hexToArrayBuffer(publicKey),
     {
-      name: "Ed25519"
+      name: "Ed25519",
     },
     false,
-    ["verify"]
+    ["verify"],
   );
 
   return crypto.subtle.verify("Ed25519", key, hexToArrayBuffer(signature), encoder.encode(`${timestamp}${rawBody}`));
@@ -56,8 +55,8 @@ export function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
-      "content-type": "application/json; charset=utf-8"
-    }
+      "content-type": "application/json; charset=utf-8",
+    },
   });
 }
 
@@ -65,7 +64,10 @@ export function getInteractionUserId(interaction: DiscordInteraction): string | 
   return interaction.member?.user?.id ?? interaction.user?.id;
 }
 
-export function getOptionValue(options: SlashCommandOption[] | undefined, name: string): string | number | boolean | undefined {
+export function getOptionValue(
+  options: SlashCommandOption[] | undefined,
+  name: string,
+): string | number | boolean | undefined {
   return options?.find((option) => option.name === name)?.value;
 }
 
@@ -74,8 +76,8 @@ export function ephemeralMessage(content: string): Response {
     type: InteractionResponseType.ChannelMessageWithSource,
     data: {
       content,
-      flags: MessageFlags.Ephemeral
-    }
+      flags: MessageFlags.Ephemeral,
+    },
   });
 }
 
@@ -86,9 +88,9 @@ export async function postChannelMessage(env: Env, channelId: string, content: s
       method: "POST",
       headers: {
         authorization: `Bot ${env.DISCORD_BOT_TOKEN}`,
-        "content-type": "application/json; charset=utf-8"
+        "content-type": "application/json; charset=utf-8",
       },
-      body: JSON.stringify({ content })
+      body: JSON.stringify({ content }),
     });
 
     logDiscordApiCall(endpoint, "POST", response.status, response.ok);
@@ -99,7 +101,7 @@ export async function postChannelMessage(env: Env, channelId: string, content: s
       captureException(error, {
         action: "post_channel_message",
         channelId,
-        status: response.status
+        status: response.status,
       });
       throw error;
     }
@@ -109,7 +111,7 @@ export async function postChannelMessage(env: Env, channelId: string, content: s
     }
     captureException(error, {
       action: "post_channel_message",
-      channelId
+      channelId,
     });
     throw error;
   }
@@ -126,13 +128,13 @@ export async function registerGuildCommands(env: Env, commands: unknown[]): Prom
       method: "PUT",
       headers: {
         authorization: `Bot ${env.DISCORD_BOT_TOKEN}`,
-        "content-type": "application/json; charset=utf-8"
+        "content-type": "application/json; charset=utf-8",
       },
-      body: JSON.stringify(commands)
+      body: JSON.stringify(commands),
     });
 
     logDiscordApiCall(endpoint, "PUT", response.status, response.ok, {
-      commandCount: commands.length
+      commandCount: commands.length,
     });
 
     if (!response.ok) {
@@ -141,7 +143,7 @@ export async function registerGuildCommands(env: Env, commands: unknown[]): Prom
       captureException(error, {
         action: "register_commands",
         status: response.status,
-        commandCount: commands.length
+        commandCount: commands.length,
       });
       throw error;
     }
@@ -151,7 +153,7 @@ export async function registerGuildCommands(env: Env, commands: unknown[]): Prom
     }
     captureException(error, {
       action: "register_commands",
-      commandCount: commands.length
+      commandCount: commands.length,
     });
     throw error;
   }
