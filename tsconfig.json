@@ -7,22 +7,10 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
-    "types": [
-      "node",
-      "vitest/globals",
-      "@cloudflare/vitest-pool-workers"
-    ],
+    "types": ["node", "vitest/globals", "@cloudflare/vitest-pool-workers"],
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["./src/*"]
     }
   },
-  "include": [
-    "worker-configuration.d.ts",
-    "src/**/*.ts",
-    "scripts/**/*.ts",
-    "tests/**/*.ts",
-    "vitest.config.ts"
-  ]
+  "include": ["worker-configuration.d.ts", "src/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts", "vitest.config.ts"]
 }

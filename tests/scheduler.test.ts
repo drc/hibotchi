@@ -1,8 +1,7 @@
 import { env } from "cloudflare:test";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createReminder } from "../src/reminders";
-import { runScheduledReminders } from "../src/scheduler";
-import type { Env } from "../src/types";
+import { createReminder } from "@/reminders";
+import { runScheduledReminders } from "@/scheduler";
 
 async function resetDatabase() {
   await env.DB.exec("DROP TABLE IF EXISTS delivery_log;");
@@ -41,15 +40,15 @@ describe("scheduler", () => {
       creatorUserId: "user-1",
       eventTitle: "Vacation",
       targetDate: "2026-04-05",
-      timezone: "America/Chicago"
+      timezone: "America/Chicago",
     });
 
-    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    const fetchMock = vi.fn<() => Promise<Response>>(async () => new Response("{}", { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
 
     const workerEnv = {
       DB: env.DB,
-      DISCORD_BOT_TOKEN: "token"
+      DISCORD_BOT_TOKEN: "token",
     } as Env;
 
     const noon = new Date("2026-04-04T17:05:00.000Z");
@@ -66,19 +65,24 @@ describe("scheduler", () => {
       creatorUserId: "user-1",
       eventTitle: "Launch Day",
       targetDate: "2026-04-04",
-      timezone: "America/Chicago"
+      timezone: "America/Chicago",
     });
 
-    vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 200 })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("{}", { status: 200 })),
+    );
 
     const workerEnv = {
       DB: env.DB,
-      DISCORD_BOT_TOKEN: "token"
+      DISCORD_BOT_TOKEN: "token",
     } as Env;
 
     await runScheduledReminders(workerEnv, { now: new Date("2026-04-04T17:05:00.000Z") });
 
-    const result = await env.DB.prepare("SELECT active FROM reminders WHERE id = ?").bind(reminderId).first<{ active: number }>();
+    const result = await env.DB.prepare("SELECT active FROM reminders WHERE id = ?")
+      .bind(reminderId)
+      .first<{ active: number }>();
     expect(result?.active).toBe(0);
   });
 
@@ -89,20 +93,20 @@ describe("scheduler", () => {
       creatorUserId: "user-1",
       eventTitle: "Vacation",
       targetDate: "2026-04-05",
-      timezone: "America/Chicago"
+      timezone: "America/Chicago",
     });
 
-    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    const fetchMock = vi.fn<() => Promise<Response>>(async () => new Response("{}", { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
 
     const workerEnv = {
       DB: env.DB,
-      DISCORD_BOT_TOKEN: "token"
+      DISCORD_BOT_TOKEN: "token",
     } as Env;
 
     const summary = await runScheduledReminders(workerEnv, {
       force: true,
-      now: new Date("2026-04-04T03:00:00.000Z")
+      now: new Date("2026-04-04T03:00:00.000Z"),
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);

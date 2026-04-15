@@ -1,6 +1,6 @@
 import { env } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
-import { createReminder, deleteUserReminder, listUserReminders } from "../src/reminders";
+import { createReminder, deleteUserReminder, listUserReminders } from "@/reminders";
 
 async function resetDatabase() {
   await env.DB.exec("DROP TABLE IF EXISTS delivery_log;");
@@ -38,7 +38,7 @@ describe("reminder ownership", () => {
       creatorUserId: "user-1",
       eventTitle: "Vacation",
       targetDate: "2026-06-01",
-      timezone: "America/Chicago"
+      timezone: "America/Chicago",
     });
     await createReminder(env.DB, {
       guildId: "guild-1",
@@ -46,7 +46,7 @@ describe("reminder ownership", () => {
       creatorUserId: "user-2",
       eventTitle: "Birthday",
       targetDate: "2026-06-02",
-      timezone: "America/Chicago"
+      timezone: "America/Chicago",
     });
 
     const reminders = await listUserReminders(env.DB, "guild-1", "user-1");
@@ -61,7 +61,7 @@ describe("reminder ownership", () => {
       creatorUserId: "user-1",
       eventTitle: "Vacation",
       targetDate: "2026-06-01",
-      timezone: "America/Chicago"
+      timezone: "America/Chicago",
     });
 
     const denied = await deleteUserReminder(env.DB, "guild-1", "user-2", id);
