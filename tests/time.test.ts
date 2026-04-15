@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { compareDateStrings, formatReminderMessage, isBeforeChicagoNoon, isChicagoNoon, isValidDateString } from "../src/time";
+import {
+  compareDateStrings,
+  formatReminderMessage,
+  isBeforeChicagoNoon,
+  isChicagoNoon,
+  isValidDateString,
+} from "@/time";
 
 describe("time helpers", () => {
   it("validates YYYY-MM-DD dates", () => {

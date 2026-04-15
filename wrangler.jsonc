@@ -1,35 +1,31 @@
 {
-	"$schema": "./node_modules/wrangler/config-schema.json",
-	"name": "hibotchi",
-	"main": "src/index.ts",
-	"compatibility_date": "2025-09-06",
-	"compatibility_flags": [
-		"nodejs_compat"
-	],
-	"observability": {
-		"enabled": true,
-		"head_sampling_rate": 1
-	},
-	"vars": {
-		"INSTALL_URL": "https://discord.com/oauth2/authorize?client_id=1490189018929954956&scope=bot%20applications.commands&permissions=3072",
-		"ADMIN_API_TOKEN": "poopoo",
-		"SENTRY_ENV": "production"
-	},
-	"d1_databases": [
-		{
-			"binding": "DB",
-			"database_name": "hibotchi",
-			"database_id": "7d0c6d72-9b78-460f-ab98-c2feaae8c61b",
-			"migrations_dir": "./migrations"
-		}
-	],
-	"triggers": {
-		"crons": [
-			"0 17 * * *"
-		]
-	},
-	"version_metadata": {
-		"binding": "CF_VERSION_METADATA"
-	},
-	"upload_source_maps": true
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "hibotchi",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-09-06",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+  },
+  "vars": {
+    "INSTALL_URL": "https://discord.com/oauth2/authorize?client_id=1490189018929954956&scope=bot%20applications.commands&permissions=3072",
+    "ADMIN_API_TOKEN": "poopoo",
+    "SENTRY_ENV": "production",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "hibotchi",
+      "database_id": "7d0c6d72-9b78-460f-ab98-c2feaae8c61b",
+      "migrations_dir": "./migrations",
+    },
+  ],
+  "triggers": {
+    "crons": ["0 17 * * *"],
+  },
+  "version_metadata": {
+    "binding": "CF_VERSION_METADATA",
+  },
+  "upload_source_maps": true,
 }
