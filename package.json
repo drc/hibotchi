@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@sentry/cloudflare": "^10.48.0",
-    "hono": "^4.12.14"
+    "hono": "^4.12.12"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.8.71",
