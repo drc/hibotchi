@@ -13,7 +13,7 @@ export const InteractionResponseType = {
   ChannelMessageWithSource: 4,
 } as const;
 
-export const MessageFlags = {
+const MessageFlags = {
   Ephemeral: 1 << 6,
 } as const;
 
@@ -47,6 +47,8 @@ export async function verifyDiscordRequest(request: Request, publicKey: string, 
     false,
     ["verify"],
   );
+
+  console.log({ event: "verification", status: "success" });
 
   return crypto.subtle.verify("Ed25519", key, hexToArrayBuffer(signature), encoder.encode(`${timestamp}${rawBody}`));
 }

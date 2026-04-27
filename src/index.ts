@@ -3,7 +3,6 @@ import { handleCommand } from "@/commands";
 import { InteractionResponseType, InteractionType, jsonResponse, verifyDiscordRequest } from "@/discord";
 import { runScheduledReminders } from "@/scheduler";
 import type { DiscordInteraction } from "@/types";
-import * as Sentry from "@sentry/cloudflare";
 import { captureException, logCommandInteraction, logSchedulerRun } from "@/logging";
 
 const app = new Hono<{ Bindings: Env }>();
@@ -88,7 +87,9 @@ app.post("/interactions", async (c) => {
   const rawBody = await c.req.text();
   const verified = await verifyDiscordRequest(c.req.raw, c.env.DISCORD_PUBLIC_KEY, rawBody);
   if (!verified) {
-    Sentry.logger.warn("discord_request_verification_failed", {
+    console.log({
+      event: "discord_request_verification_failed",
+      level: "warn",
       path: "/interactions",
     });
     return new Response("Bad request signature.", { status: 401 });
@@ -128,7 +129,9 @@ app.post("/interactions", async (c) => {
     }
   }
 
-  Sentry.logger.warn("unsupported_interaction_type", {
+  console.log({
+    event: "unsupported_interaction_type",
+    level: "warn",
     type: interaction.type,
   });
   return jsonResponse({ error: "Unsupported interaction type." }, 400);
@@ -136,7 +139,9 @@ app.post("/interactions", async (c) => {
 
 app.post("/admin/run-reminders", async (c) => {
   if (!hasValidAdminToken(c.req.raw, c.env.ADMIN_API_TOKEN)) {
-    Sentry.logger.warn("unauthorized_admin_request", {
+    console.log({
+      event: "unauthorized_admin_request",
+      level: "warn",
       path: "/admin/run-reminders",
     });
     return jsonResponse({ error: "Unauthorized" }, 401);
@@ -176,19 +181,8 @@ app.post("/admin/run-reminders", async (c) => {
   }
 });
 
-const withSentry = Sentry.withSentry(
-  (env: Env) => ({
-    dsn: env.SENTRY_DSN,
-    environment: env.SENTRY_ENV ?? "production",
-    sendDefaultPii: true,
-    enableLogs: true,
-    tracesSampleRate: env.SENTRY_ENV === "production" ? 0.1 : 1.0,
-  }),
-  app,
-);
-
 const worker = {
-  fetch: withSentry.fetch,
+  fetch: app.fetch,
   async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(runScheduledReminders(env));
   },

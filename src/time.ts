@@ -1,6 +1,6 @@
 const CHICAGO_TIME_ZONE = "America/Chicago";
 
-export interface ChicagoParts {
+interface ChicagoParts {
   year: number;
   month: number;
   day: number;
@@ -20,7 +20,7 @@ function getChicagoFormatter() {
   });
 }
 
-export function getChicagoNowParts(now = new Date()): ChicagoParts {
+function getChicagoNowParts(now = new Date()): ChicagoParts {
   const formatted = getChicagoFormatter().formatToParts(now);
   const readPart = (type: Intl.DateTimeFormatPartTypes) => {
     const part = formatted.find((entry) => entry.type === type)?.value;
@@ -75,7 +75,7 @@ export function compareDateStrings(left: string, right: string): number {
   return left < right ? -1 : 1;
 }
 
-export function discordDateUnix(dateString: string): number {
+function discordDateUnix(dateString: string): number {
   const [yearString, monthString, dayString] = dateString.split("-");
   const year = Number(yearString);
   const month = Number(monthString);
