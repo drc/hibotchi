@@ -9,7 +9,6 @@ import {
   isValidDateString,
 } from "@/time";
 import type { DiscordInteraction } from "@/types";
-import * as Sentry from "@sentry/cloudflare";
 import { captureException, logReminderOperation, logValidationError } from "@/logging";
 
 const TITLE_MAX_LENGTH = 120;
@@ -175,12 +174,10 @@ async function handleListTickets(env: Env, interaction: DiscordInteraction): Pro
     const reminders = await listUserReminders(env.DB, context.guildId, context.userId);
 
     const duration = Date.now() - start;
-    Sentry.metrics.distribution("list_response_time", duration, {
-      unit: "millisecond",
-    });
 
     logReminderOperation("listed", undefined, context.guildId, context.userId, {
       count: reminders.length,
+      durationMs: duration,
     });
 
     if (reminders.length === 0) {
@@ -190,14 +187,6 @@ async function handleListTickets(env: Env, interaction: DiscordInteraction): Pro
     const lines = reminders.map(
       (reminder) => `#${reminder.id} **${reminder.event_title}** (${formatDiscordDateTag(reminder.target_date)})`,
     );
-
-    Sentry.metrics.count("list_reminder_calls", 1, {
-      attributes: {
-        action: "list_reminders",
-        guildId: context.guildId,
-        userId: context.userId,
-      },
-    });
 
     return ephemeralMessage(lines.join("\n"));
   } catch (error) {

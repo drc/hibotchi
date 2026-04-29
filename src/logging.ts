@@ -1,42 +1,3 @@
-import * as Sentry from "@sentry/cloudflare";
-
-/**
- * Sensitive keys to filter from logs to prevent leaking secrets
- */
-const SENSITIVE_KEYS = ["ADMIN_API_TOKEN", "DISCORD_BOT_TOKEN", "DISCORD_PUBLIC_KEY", "authorization", "Authorization"];
-
-/**
- * Recursively sanitize an object to remove sensitive data
- */
-function sanitizeObject(obj: unknown): unknown {
-  if (obj === null || obj === undefined) {
-    return obj;
-  }
-
-  if (typeof obj === "string") {
-    // Don't expose raw strings that might be tokens
-    return "[redacted]";
-  }
-
-  if (Array.isArray(obj)) {
-    return obj.map(sanitizeObject);
-  }
-
-  if (typeof obj === "object") {
-    const sanitized: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(obj)) {
-      if (SENSITIVE_KEYS.some((sensitiveKey) => key.toLowerCase().includes(sensitiveKey.toLowerCase()))) {
-        sanitized[key] = "[redacted]";
-      } else {
-        sanitized[key] = sanitizeObject(value);
-      }
-    }
-    return sanitized;
-  }
-
-  return obj;
-}
-
 /**
  * Log a slash command interaction with context
  */
@@ -47,7 +8,8 @@ export function logCommandInteraction(
   channelId: string | undefined,
   details?: Record<string, unknown>,
 ): void {
-  Sentry.logger.info("command_invoked", {
+  console.log({
+    event: "command_invoked",
     command: commandName,
     guildId,
     userId,
@@ -66,7 +28,8 @@ export function logReminderOperation(
   userId?: string,
   details?: Record<string, unknown>,
 ): void {
-  Sentry.logger.info(`reminder_${operation}`, {
+  console.log({
+    event: `reminder_${operation}`,
     reminderId,
     guildId,
     userId,
@@ -89,7 +52,8 @@ export function logSchedulerRun(
     deactivatedAfterToday: number;
   },
 ): void {
-  Sentry.logger.info("scheduler_run", {
+  console.log({
+    event: "scheduler_run",
     forced,
     isNoonWindow,
     today,
@@ -111,9 +75,8 @@ export function logDiscordApiCall(
   success: boolean,
   details?: Record<string, unknown>,
 ): void {
-  const level = success ? "info" : "warn";
-  const logger = Sentry.logger[level as "info" | "warn"];
-  logger("discord_api_call", {
+  console.log({
+    event: "discord_api_call",
     endpoint,
     method,
     status,
@@ -131,9 +94,8 @@ export function logDatabaseOperation(
   success: boolean,
   details?: Record<string, unknown>,
 ): void {
-  const level = success ? "info" : "warn";
-  const logger = Sentry.logger[level as "info" | "warn"];
-  logger("database_operation", {
+  console.log({
+    event: "database_operation",
     operation,
     table,
     success,
@@ -142,7 +104,7 @@ export function logDatabaseOperation(
 }
 
 /**
- * Capture an exception with context, sanitizing sensitive data
+ * Capture an exception and log with context
  */
 export function captureException(
   error: unknown,
@@ -155,22 +117,16 @@ export function captureException(
     [key: string]: unknown;
   },
 ): void {
-  const sanitizedContext = sanitizeObject(context) as Record<string, unknown>;
-  if (error instanceof Error) {
-    Sentry.captureException(error, {
-      contexts: {
-        operation: sanitizedContext,
-      },
-      level: "error",
-    });
-  } else {
-    Sentry.captureException(new Error(String(error)), {
-      contexts: {
-        operation: sanitizedContext,
-      },
-      level: "error",
-    });
-  }
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  const errorStack = error instanceof Error ? error.stack : undefined;
+
+  console.log({
+    event: "error_captured",
+    level: "error",
+    message: errorMessage,
+    stack: errorStack,
+    context,
+  });
 }
 
 /**
@@ -182,7 +138,9 @@ export function logValidationError(
   userId: string | undefined,
   details?: Record<string, unknown>,
 ): void {
-  Sentry.logger.warn("validation_error", {
+  console.log({
+    event: "validation_error",
+    level: "warn",
     reason,
     guildId,
     userId,

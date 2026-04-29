@@ -1,15 +1,14 @@
 import { postChannelMessage } from "@/discord";
 import { deactivateReminder, getActiveReminders, recordDelivery } from "@/reminders";
 import { chicagoDateString, compareDateStrings, formatReminderMessage, isChicagoNoon } from "@/time";
-import * as Sentry from "@sentry/cloudflare";
 import { captureException, logSchedulerRun } from "./logging";
 
-export interface SchedulerRunOptions {
+interface SchedulerRunOptions {
   force?: boolean;
   now?: Date;
 }
 
-export interface SchedulerRunSummary {
+interface SchedulerRunSummary {
   attemptedAt: string;
   forced: boolean;
   isNoonWindow: boolean;
@@ -29,7 +28,8 @@ export async function runScheduledReminders(env: Env, options: SchedulerRunOptio
   const today = chicagoDateString(now);
 
   if (!forced && !isNoonWindow) {
-    Sentry.logger.info("scheduler_skipped_outside_window", {
+    console.log({
+      event: "scheduler_skipped_outside_window",
       today,
       forced,
     });
@@ -67,7 +67,8 @@ export async function runScheduledReminders(env: Env, options: SchedulerRunOptio
       if (comparison < 0) {
         await deactivateReminder(env.DB, reminder.id);
         summary.deactivatedExpired += 1;
-        Sentry.logger.info("reminder_deactivated_expired", {
+        console.log({
+          event: "reminder_deactivated_expired",
           reminderId: reminder.id,
           guildId: reminder.guild_id,
           targetDate: reminder.target_date,
@@ -79,7 +80,8 @@ export async function runScheduledReminders(env: Env, options: SchedulerRunOptio
       const inserted = await recordDelivery(env.DB, reminder.id, today);
       if (!inserted) {
         summary.skippedDuplicate += 1;
-        Sentry.logger.info("reminder_delivery_duplicate", {
+        console.log({
+          event: "reminder_delivery_duplicate",
           reminderId: reminder.id,
           guildId: reminder.guild_id,
           today,
@@ -91,7 +93,8 @@ export async function runScheduledReminders(env: Env, options: SchedulerRunOptio
       if (!content) {
         await deactivateReminder(env.DB, reminder.id);
         summary.deactivatedExpired += 1;
-        Sentry.logger.info("reminder_deactivated_empty_message", {
+        console.log({
+          event: "reminder_deactivated_empty_message",
           reminderId: reminder.id,
           guildId: reminder.guild_id,
           targetDate: reminder.target_date,
@@ -102,7 +105,8 @@ export async function runScheduledReminders(env: Env, options: SchedulerRunOptio
       try {
         await postChannelMessage(env, reminder.channel_id, content);
         summary.delivered += 1;
-        Sentry.logger.info("reminder_delivered", {
+        console.log({
+          event: "reminder_delivered",
           reminderId: reminder.id,
           guildId: reminder.guild_id,
           channelId: reminder.channel_id,
@@ -121,7 +125,8 @@ export async function runScheduledReminders(env: Env, options: SchedulerRunOptio
       if (comparison === 0) {
         await deactivateReminder(env.DB, reminder.id);
         summary.deactivatedAfterToday += 1;
-        Sentry.logger.info("reminder_deactivated_after_delivery", {
+        console.log({
+          event: "reminder_deactivated_after_delivery",
           reminderId: reminder.id,
           guildId: reminder.guild_id,
         });
