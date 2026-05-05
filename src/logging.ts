@@ -1,3 +1,16 @@
+import type { LogEntry, LogLevel } from "@/types";
+
+function emitLog(level: LogLevel, event: string, context: Record<string, unknown>, traceId?: string): void {
+  const entry: LogEntry = {
+    timestamp: new Date().toISOString(),
+    level,
+    event,
+    traceId,
+    context,
+  };
+  console.log(JSON.stringify(entry));
+}
+
 /**
  * Log a slash command interaction with context
  */
@@ -7,15 +20,15 @@ export function logCommandInteraction(
   userId: string | undefined,
   channelId: string | undefined,
   details?: Record<string, unknown>,
+  traceId?: string,
 ): void {
-  console.log({
-    event: "command_invoked",
+  emitLog("INFO", "command_invoked", {
     command: commandName,
     guildId,
     userId,
     channelId,
     ...details,
-  });
+  }, traceId);
 }
 
 /**
@@ -27,14 +40,14 @@ export function logReminderOperation(
   guildId?: string,
   userId?: string,
   details?: Record<string, unknown>,
+  traceId?: string,
 ): void {
-  console.log({
-    event: `reminder_${operation}`,
+  emitLog("INFO", `reminder_${operation}`, {
     reminderId,
     guildId,
     userId,
     ...details,
-  });
+  }, traceId);
 }
 
 /**
@@ -51,9 +64,9 @@ export function logSchedulerRun(
     deactivatedExpired: number;
     deactivatedAfterToday: number;
   },
+  traceId?: string,
 ): void {
-  console.log({
-    event: "scheduler_run",
+  emitLog("INFO", "scheduler_run", {
     forced,
     isNoonWindow,
     today,
@@ -62,7 +75,7 @@ export function logSchedulerRun(
     skippedDuplicate: summary.skippedDuplicate,
     deactivatedExpired: summary.deactivatedExpired,
     deactivatedAfterToday: summary.deactivatedAfterToday,
-  });
+  }, traceId);
 }
 
 /**
@@ -74,15 +87,15 @@ export function logDiscordApiCall(
   status: number,
   success: boolean,
   details?: Record<string, unknown>,
+  traceId?: string,
 ): void {
-  console.log({
-    event: "discord_api_call",
+  emitLog(success ? "INFO" : "WARN", "discord_api_call", {
     endpoint,
     method,
     status,
     success,
     ...details,
-  });
+  }, traceId);
 }
 
 /**
@@ -93,14 +106,14 @@ export function logDatabaseOperation(
   table: string,
   success: boolean,
   details?: Record<string, unknown>,
+  traceId?: string,
 ): void {
-  console.log({
-    event: "database_operation",
+  emitLog(success ? "INFO" : "ERROR", "database_operation", {
     operation,
     table,
     success,
     ...details,
-  });
+  }, traceId);
 }
 
 /**
@@ -116,17 +129,16 @@ export function captureException(
     channelId?: string;
     [key: string]: unknown;
   },
+  traceId?: string,
 ): void {
   const errorMessage = error instanceof Error ? error.message : String(error);
   const errorStack = error instanceof Error ? error.stack : undefined;
 
-  console.log({
-    event: "error_captured",
-    level: "error",
+  emitLog("ERROR", "error_captured", {
     message: errorMessage,
     stack: errorStack,
-    context,
-  });
+    ...context,
+  }, traceId);
 }
 
 /**
@@ -137,13 +149,12 @@ export function logValidationError(
   guildId: string | undefined,
   userId: string | undefined,
   details?: Record<string, unknown>,
+  traceId?: string,
 ): void {
-  console.log({
-    event: "validation_error",
-    level: "warn",
+  emitLog("WARN", "validation_error", {
     reason,
     guildId,
     userId,
     ...details,
-  });
+  }, traceId);
 }

@@ -1,3 +1,13 @@
+export type LogLevel = "DEBUG" | "INFO" | "WARN" | "ERROR";
+
+export interface LogEntry {
+  timestamp: string;
+  level: LogLevel;
+  event: string;
+  traceId?: string;
+  context: Record<string, unknown>;
+}
+
 export interface ReminderRecord {
   id: number;
   guild_id: string;

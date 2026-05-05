@@ -3,7 +3,7 @@ import { handleCommand } from "@/commands";
 import { InteractionResponseType, InteractionType, jsonResponse, verifyDiscordRequest } from "@/discord";
 import { runScheduledReminders } from "@/scheduler";
 import type { DiscordInteraction } from "@/types";
-import { captureException, logCommandInteraction, logSchedulerRun } from "@/logging";
+import { captureException, logCommandInteraction, logSchedulerRun, logValidationError } from "@/logging";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -84,13 +84,13 @@ app.get("/", (c) => {
 });
 
 app.post("/interactions", async (c) => {
+  const traceId = crypto.randomUUID();
   const rawBody = await c.req.text();
   const verified = await verifyDiscordRequest(c.req.raw, c.env.DISCORD_PUBLIC_KEY, rawBody);
   if (!verified) {
-    console.log({
-      event: "discord_request_verification_failed",
-      level: "warn",
+    logValidationError("discord_request_verification_failed", undefined, undefined, {
       path: "/interactions",
+      traceId,
     });
     return new Response("Bad request signature.", { status: 401 });
   }
@@ -99,7 +99,7 @@ app.post("/interactions", async (c) => {
   try {
     interaction = JSON.parse(rawBody) as DiscordInteraction;
   } catch (error) {
-    captureException(error, { action: "parse_interaction_body" });
+    captureException(error, { action: "parse_interaction_body" }, traceId);
     return jsonResponse({ error: "Invalid JSON." }, 400);
   }
 
@@ -113,7 +113,7 @@ app.post("/interactions", async (c) => {
     const userId = interaction.member?.user?.id ?? interaction.user?.id;
     const channelId = interaction.channel_id;
 
-    logCommandInteraction(commandName, guildId, userId, channelId);
+    logCommandInteraction(commandName, guildId, userId, channelId, undefined, traceId);
 
     try {
       return await handleCommand(c.env, interaction);
@@ -124,25 +124,24 @@ app.post("/interactions", async (c) => {
         guildId,
         userId,
         channelId,
-      });
+      }, traceId);
       return jsonResponse({ error: "An error occurred while processing your command." }, 500);
     }
   }
 
-  console.log({
-    event: "unsupported_interaction_type",
-    level: "warn",
+  logValidationError("unsupported_interaction_type", undefined, undefined, {
     type: interaction.type,
+    traceId,
   });
   return jsonResponse({ error: "Unsupported interaction type." }, 400);
 });
 
 app.post("/admin/run-reminders", async (c) => {
+  const traceId = crypto.randomUUID();
   if (!hasValidAdminToken(c.req.raw, c.env.ADMIN_API_TOKEN)) {
-    console.log({
-      event: "unauthorized_admin_request",
-      level: "warn",
+    logValidationError("unauthorized_admin_request", undefined, undefined, {
       path: "/admin/run-reminders",
+      traceId,
     });
     return jsonResponse({ error: "Unauthorized" }, 401);
   }
@@ -153,7 +152,7 @@ app.post("/admin/run-reminders", async (c) => {
     try {
       body = await c.req.json<{ force?: boolean }>();
     } catch (error) {
-      captureException(error, { action: "parse_admin_request_body" });
+      captureException(error, { action: "parse_admin_request_body" }, traceId);
       return jsonResponse({ error: "Invalid JSON." }, 400);
     }
   }
@@ -169,14 +168,14 @@ app.post("/admin/run-reminders", async (c) => {
       skippedDuplicate: summary.skippedDuplicate,
       deactivatedExpired: summary.deactivatedExpired,
       deactivatedAfterToday: summary.deactivatedAfterToday,
-    });
+    }, traceId);
 
     return jsonResponse(summary);
   } catch (error) {
     captureException(error, {
       action: "run_scheduled_reminders",
       forced: body.force,
-    });
+    }, traceId);
     return jsonResponse({ error: "An error occurred while running reminders." }, 500);
   }
 });
@@ -189,3 +188,4 @@ const worker = {
 };
 
 export default worker;
+
